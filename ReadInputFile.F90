@@ -1,0 +1,86 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                                                         ! 
+!    FILE: ReadInputFile.F90                              !
+!    CONTAINS: subroutine ReadInputFile                   !
+!                                                         ! 
+!    PURPOSE: Read parameters from bou.in file            !
+!                                                         !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      subroutine ReadInputFile
+      use param
+      implicit none
+      character(len=4) :: dummy
+      integer flagstat,flagbal,stst3flag
+      logical fexist
+
+      open(unit=15,file='bou.in',status='old')
+        read(15,301) dummy
+        read(15,*) nxm,nym,nzm,nsst,nread
+        read(15,301) dummy
+        read(15,*) ntst,walltimemax,tout,tmax,ireset
+        read(15,301) dummy
+        read(15,*) alx3,istr3,str3
+        read(15,301) dummy
+        read(15,*) ylen,zlen
+        read(15,301) dummy
+        read(15,*) ray,pra,dt,resid,limitCFL
+        read(15,301) dummy
+        read(15,*) flagstat,flagbal,tsta,starea
+        read(15,301) dummy
+        read(15,*) inslws,inslwn
+        read(15,301) dummy       
+        read(15,*) idtv,dtmin,dtmax,limitVel
+        read(15,301) dummy       
+        read(15,*) stst3flag
+#ifdef USE_HYBRID
+        read(15,301) dummy
+        read(15,*) gc_split_ratio
+
+        if (gc_split_ratio .ge. 1.d0) then
+          write(6,*) "GC_SPLIT_RATIO is greater than or equal to 1.0. Use pure GPU executable! Quitting..."
+          call exit(1)
+        else if (gc_split_ratio .le. 0.d0) then
+          write(6,*) "GC_SPLIT_RATIO cannot be less than or equal to 0.0. Quitting..."
+          call exit(1)
+        end if
+#endif
+301     format(a4)                
+      close(15)
+
+      nx=nxm+1
+      ny=nym+1                                                          
+      nz=nzm+1                                                          
+
+!m============================================
+!
+!     DEFINITIONS FOR THE NATURAL CONVECTION
+!
+      ren = sqrt(ray/pra)
+      pec = sqrt(pra*ray)
+      pi=real(2.0,fp_kind)*asin(real(1.0,fp_kind))                          
+!                                                                       
+!
+      if(flagstat.ne.0) statcal = .true.
+      if(idtv.eq.0) variabletstep = .false.
+      if(flagbal.ne.0) disscal = .true.
+      if(nread.ne.0) readflow = .true.
+      if(ireset.ne.0) resetlogstime = .true.
+
+      if(stst3flag.ne.0) then
+       inquire(file='./stst3.in', exist=fexist) 
+       if(fexist) then
+        dumpslabs = .true.
+       else
+        write(6,*) "stst3.in not found, turning off slab dump"
+       end if
+      endif
+
+
+      if(starea.ne.0) then 
+        readstats = .true.
+        if (.not. readflow) write(6,*) 'Warning: Restarting flowfield with statistics read'
+      endif
+
+
+      return 
+      end

@@ -1,0 +1,110 @@
+#
+# Makefile for PizDaint
+# module load pgi cudatoolkit fftw cray-hdf5-parallel/1.8.16 intel
+# module swap PrgEnv-cray PrgEnv-pgi
+#
+all: afid_gpu afid_cpu
+
+# Flags for CPU version
+afid_cpu: FFLAGS = -O3  -Kieee
+#-DDEBUG
+#afid_cpu: FFLAGS = -O3  -DDEBUG -mp
+
+# Flags for CUDA  version
+afid_gpu: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc60,cuda8.0,ptxinfo,madconst -Kieee -Mlarge_arrays
+#-DDEBUG
+#FFLAGS= -DUSE_CUDA -Mcuda=cc35,ptxinfo,cuda6.5,nollvm,keepgpu -Minfo  -DDEBUG
+
+CUDA_HOME = $(CRAY_CUDATOOLKIT_DIR)
+INCLUDE=  -I $(MPICH_DIR)/include \
+          -I $(HDF5_INCLUDE_OPTS)
+
+FCLIBS =  -L$(MPICH_DIR)/lib -lmpich 
+FFTW3_BIN = 
+FFTW3_LIBS = -L$(FFTW_DIR)  -lfftw3_threads -lfftw3
+HDF5_LIBS = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5  -lrt -lz -ldl -lm
+BLAS_LIBS=  -L$(MKLROOT)/lib/intel64/ -lmkl_rt
+
+LDFLAGS = -Mcudalib=cufft -L$(CUDA_HOME)/lib64 -lnvToolsExt  $(HDF5_LIBS) $(FFTW3_LIBS) $(BLAS_LIBS)
+
+OBJ= param.o \
+     mpiDeviceUtil.o \
+     decomp_2d.o \
+     tridiag.o \
+     decomp_2d_fft.o \
+     AuxiliaryRoutines.o \
+     CalcDissipationNu.o  \
+     CalcLocalDivergence.o \
+     CalcMaxCFL.o \
+     CalcPlateNu.o \
+     CheckDivergence.o  \
+     CorrectPressure.o \
+     CorrectVelocity.o \
+     CreateGrid.o  \
+     CreateInitialConditions.o \
+     DeallocateVariables.o \
+     DebugRoutines.o      \
+     GlobalQuantities.o \
+     ExplicitTermsTemp.o \
+     ExplicitTermsVX.o \
+     ExplicitTermsVY.o \
+     ExplicitTermsVZ.o \
+     HdfRoutines.o \
+     HdfReadContinua.o  \
+     interp.o \
+     InitVariables.o \
+     InitTimeMarchScheme.o \
+     LocateLargeDivergence.o \
+     MpiAuxRoutines.o \
+     QuitRoutine.o \
+     ReadFlowField.o \
+     ReadInputFile.o \
+     ResetLogs.o \
+     SetTempBCs.o \
+     SlabDumpRoutines.o \
+     SolverInterfaces.o \
+     SolveImpEqnUpdate_Temp.o \
+     SolveImpEqnUpdate_X.o \
+     SolveImpEqnUpdate_YZ.o \
+     SolvePressureCorrection.o \
+     TimeMarcher.o \
+     WriteFlowField.o \
+     WriteGridInfo.o \
+     ImplicitAndUpdateTemp.o \
+     ImplicitAndUpdateVX.o \
+     ImplicitAndUpdateVY.o \
+     ImplicitAndUpdateVZ.o \
+     InitPressureSolver.o \
+     StatReadReduceWrite.o \
+     StatRoutines.o \
+     main.o  
+
+# Create the subdirectory for objects
+OBJDIRCPU := $(shell mkdir -p Obj_cpu)
+OBJDIRGPU := $(shell mkdir -p Obj_gpu)
+OBJDIRHYB := $(shell mkdir -p Obj_hyb)
+
+
+OBJ_CPU = $(foreach O, ${OBJ}, Obj_cpu/$(O))
+OBJ_GPU = $(foreach O, ${OBJ}, Obj_gpu/$(O))
+
+Obj_gpu/%.o: %.F90 
+	pgf90 -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_gpu
+
+Obj_gpu/%.o: %.CUF 
+	pgf90 -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_gpu
+
+Obj_cpu/%.o: %.CUF 
+	pgf90 -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_cpu
+
+Obj_cpu/%.o: %.F90 
+	pgf90 -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_cpu
+
+afid_gpu: ${OBJ_GPU}
+	pgf90 $(FFLAGS) $(OBJ_GPU) $(FCLIBS) $(LDFLAGS) -o afid_gpu 
+
+afid_cpu: $(OBJ_CPU)
+	pgf90 $(FFLAGS) $(OBJ_CPU) $(FCLIBS) $(LDFLAGS) -o afid_cpu 
+
+clean:
+	rm  afid_cpu afid_gpu Obj_cpu/*.o  Obj_gpu/*.o  Obj_cpu/*.mod  Obj_gpu/*.mod 

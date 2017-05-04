@@ -1,0 +1,20 @@
+ NXM  NYM  NZM   NSST(>1=RK,else AB) NREAD 
+ 64 64 128       3                   0
+ NTST   WALLTIMEMAX    TOUT      TMAX     IRESET
+ 20     83000          1e-3      50.0      0
+ ALX3D      ISTR3   STR3 
+ 1.0000       6     12.0
+ YLEN ZLEN 
+ 0.5   0.5   
+   RA   PRA      DT      RESID    CFLMAX
+ 1e+6  1.0   1e-8   1.e-2    1.2
+ STATON  BALANCEON  TSTA  STAREAD
+ 0        1            0    0
+ inslws   inslwn 
+  1          1   
+ IDTV(0=dt fixed,1=var.)   DTMIN(for dt var.)  DTMAX(for dt var.)     VLIM
+   1                       1e-8                0.005                    1e3
+ SLABDUMP(STST3)
+   0
+ GC_SPLIT_RATIO
+  0.8
