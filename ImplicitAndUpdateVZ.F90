@@ -31,9 +31,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVZ)(vz,pr,rhs,ruz,dq,am3sk,ac3sk,ap3sk,km
   real(fp_kind), dimension(1:nx ,xstart(2):xend(2),xstart(3):xend(3))  :: rhs, ruz, dq
   real(fp_kind), dimension(1:nx), intent(IN) :: am3sk,ac3sk,ap3sk
   integer, dimension(1:nx), intent(IN) :: kmv,kpv
-  #ifdef USE_GPU
+#ifdef USE_GPU
   attributes(device) :: vz,pr,rhs,ruz,dq,am3sk,ac3sk,ap3sk,kmv,kpv
-  #endif
+#endif
   integer :: kc,jc,ic,imm
   integer :: kmm,kpp
   real(fp_kind)    :: alre,amm,acc,app,udz,betadx,ackl_b
@@ -44,9 +44,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVZ)(vz,pr,rhs,ruz,dq,am3sk,ac3sk,ap3sk,km
   betadx=beta*al
   udz=dz*al
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #else
+#else
   !$OMP  PARALLEL DO &
   !$OMP   DEFAULT(none) &
   !$OMP   SHARED(istart,iend,nxm,vz,pr) &
@@ -56,7 +56,7 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVZ)(vz,pr,rhs,ruz,dq,am3sk,ac3sk,ap3sk,km
   !$OMP   PRIVATE(ic,jc,kc,imm,kmm,kpp) &
   !$OMP   PRIVATE(amm,acc,app) &
   !$OMP   PRIVATE(dxxvz,dzp,ackl_b)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     imm=ic-1
     do jc=istart(2),iend(2)
@@ -91,9 +91,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVZ)(vz,pr,rhs,ruz,dq,am3sk,ac3sk,ap3sk,km
       enddo
     enddo
   enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP END PARALLEL DO
-  #endif
+#endif
 
   !  Solve equation and update velocity
   call SolveImpEqnUpdate_YZ(vz,rhs,am3sk,ac3sk,ap3sk)

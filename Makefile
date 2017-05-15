@@ -47,6 +47,8 @@ OBJ= param.o \
      decomp_2d.o \
      tridiag.o \
      decomp_2d_fft.o \
+     dph_routines.o \
+     hybrid_comm_routines.o \
      AuxiliaryRoutines.o \
      CalcDissipationNu.o  \
      CalcMaxCFL.o \

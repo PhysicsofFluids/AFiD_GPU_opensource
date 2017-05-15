@@ -30,9 +30,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateTemp)(temp,hro,rhs,rutemp,tempbp,temptp,a
   real(fp_kind), dimension(1:nx ,xstart(2):xend(2),xstart(3):xend(3))  :: rhs, rutemp, hro
   real(fp_kind), dimension(1:ny,1:nz) :: tempbp, temptp
   real(fp_kind), dimension(1:nx), intent(IN) :: am3ck,ac3ck,ap3ck,am3ssk,ac3ssk,ap3ssk
-  #ifdef USE_GPU
+#ifdef USE_GPU
   attributes(device) :: temp,rhs,rutemp,hro,tempbp,temptp,am3ck,ac3ck,ap3ck,am3ssk,ac3ssk,ap3ssk
-  #endif
+#endif
 
   integer :: jc,kc,ic
   integer :: km,kp
@@ -42,9 +42,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateTemp)(temp,hro,rhs,rutemp,tempbp,temptp,a
   alpec=al/pec
   betadx=real(0.5,fp_kind)*al*dt/pec
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #else
+#else
   !$OMP  PARALLEL DO &
   !$OMP   DEFAULT(none) &
   !$OMP   SHARED(istart,iend,nxm,temp) &
@@ -54,7 +54,7 @@ subroutine MY_ROUTINE(ImplicitAndUpdateTemp)(temp,hro,rhs,rutemp,tempbp,temptp,a
   !$OMP   PRIVATE(ic,jc,kc,km,kp) &
   !$OMP   PRIVATE(amm,acc,app,ackl_b) &
   !$OMP   PRIVATE(dxxt)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     do jc=istart(2),iend(2)
       do kc=2,nxm
@@ -82,9 +82,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateTemp)(temp,hro,rhs,rutemp,tempbp,temptp,a
       enddo
     enddo
   enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP  END PARALLEL DO
-  #endif
+#endif
 
   #ifdef USE_GPU
   !$cuf kernel do(2) <<<*,*>>>

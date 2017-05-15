@@ -27,9 +27,9 @@ subroutine MY_ROUTINE(ExplicitTermsVZ)(vx,vy,vz,dq,udx3m,kmv,kpv)
   real(fp_kind), dimension(1:nx,xstart(2):xend(2),xstart(3):xend(3)),intent(OUT)  :: dq
   real(fp_kind), dimension(1:nx), intent(IN) :: udx3m
   integer, dimension(1:nx), intent(IN) :: kmv,kpv
-  #ifdef USE_GPU
+#ifdef USE_GPU
   attributes(device) :: vx,vy,vz,dq,udx3m,kmv,kpv
-  #endif
+#endif
 
   integer          :: kc,kp,jpp,jmm,jc,ic,imm,ipp
   integer          :: kmm,kpp
@@ -43,13 +43,13 @@ subroutine MY_ROUTINE(ExplicitTermsVZ)(vx,vy,vz,dq,udx3m,kmv,kpv)
   udy=dy*real(0.25,fp_kind)
   udz=dz*real(0.25,fp_kind)
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #endif
+#endif
   do ic=istart(3),iend(3)
     imm=ic-1
     ipp=ic+1
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP  PARALLEL DO &
   !$OMP  DEFAULT(none) &
   !$OMP  SHARED(istart,iend,vz,vy,vx,dz,dy,udx3m) &
@@ -59,7 +59,7 @@ subroutine MY_ROUTINE(ExplicitTermsVZ)(vx,vy,vz,dq,udx3m,kmv,kpv)
   !$OMP  PRIVATE(jc,kc,kmm,kp,kpp) &
   !$OMP  PRIVATE(jmm,jpp) &
   !$OMP  PRIVATE(hzz,hzy,hzx,dzzvz,dyyvz)
-  #endif
+#endif
     do jc=istart(2),iend(2)
       jmm=jc-1
       jpp=jc+1
@@ -124,9 +124,9 @@ subroutine MY_ROUTINE(ExplicitTermsVZ)(vx,vy,vz,dq,udx3m,kmv,kpv)
         !
       enddo
     enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP END PARALLEL DO
-  #endif
+#endif
   enddo
 
 

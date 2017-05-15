@@ -28,28 +28,28 @@ subroutine MY_ROUTINE(CalcLocalDivergence)(vx,vy,vz,dph,udx3m)
   real(fp_kind), dimension(1:nxm,xstart(2):xend(2),xstart(3):xend(3))  :: dph
   real(fp_kind), dimension(1:nx), intent(IN) :: udx3m
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   attributes(device) :: vx,vy,vz,dph,udx3m
-  #endif
+#endif
 
   integer :: jc,jp,kc,kp,ic,ip
   real(fp_kind)    :: usdtal,dqcap   
 
   usdtal = real(1.0,fp_kind)/(dt*al)
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #endif
+#endif
   do ic=istart(3),iend(3)
     ip=ic+1
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP  PARALLEL DO &
   !$OMP   DEFAULT(none) &
   !$OMP   SHARED(istart,ic,ip,vz,vy,vx,dz,dy,udx3m,usdtal) &
   !$OMP   SHARED(dph,nxm,iend) &
   !$OMP   PRIVATE(jc,kc,jp,kp) &
   !$OMP   PRIVATE(dqcap)
-  #endif
+#endif
     do jc=istart(2),iend(2)
       jp=jc+1
       do kc=1,nxm
@@ -60,9 +60,9 @@ subroutine MY_ROUTINE(CalcLocalDivergence)(vx,vy,vz,dph,udx3m)
         dph(kc,jc,ic)=dqcap*usdtal
       enddo
     enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP END PARALLEL DO
-  #endif
+#endif
   enddo
 
   return

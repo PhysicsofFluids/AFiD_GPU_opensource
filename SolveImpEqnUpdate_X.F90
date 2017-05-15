@@ -30,13 +30,13 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_X)(vx,rhs,am3ssk,ac3ck,ap3ssk)
   real(fp_kind), dimension(1:nx,xstart(2)-lvlhalo:xend(2)+lvlhalo,xstart(3)-lvlhalo:xend(3)+lvlhalo) :: vx
   real(fp_kind), dimension(1:nx ,xstart(2):xend(2),xstart(3):xend(3))  :: rhs
   real(fp_kind), dimension(1:nx), intent(IN) :: am3ssk,ac3ck,ap3ssk
-  #ifdef USE_GPU
+#ifdef USE_GPU
   attributes(device) :: vx,rhs,am3ssk,ac3ck,ap3ssk
-  #endif
+#endif
 
-  #ifndef USE_GPU
+#ifndef USE_GPU
   real(fp_kind) :: amkT(nx-1),apkT(nx-1),appk(nx-2),ackT(nx)
-  #endif
+#endif
 
   integer :: jc,kc,info,ic,nrhs,istat
   integer :: ipkv(nx)
@@ -46,9 +46,9 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_X)(vx,rhs,am3ssk,ac3ck,ap3ssk)
   nrhs=(iend(3)-istart(3)+1)*(iend(2)-istart(2)+1)
 
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(1) <<<*,*>>>
-  #endif
+#endif
   do kc=1,nx
     ackl_b=real(1.0,fp_kind)/(real(1.0,fp_kind)-ac3ck(kc)*betadx)
     amkl(kc)=-am3ssk(kc)*betadx*ackl_b
@@ -62,9 +62,9 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_X)(vx,rhs,am3ssk,ac3ck,ap3ssk)
     end if
   enddo
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   call tepDgtsv_nopivot( nx, nrhs, amkl, ackl, apkl, rhs, nx)      
-  #else
+#else
   call nvtxStartRangeAsync("Solve CPU")
   amkT=amkl(2:nx)
   apkT=apkl(1:(nx-1))
@@ -73,16 +73,16 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_X)(vx,rhs,am3ssk,ac3ck,ap3ssk)
   call dgttrf(nx,amkT,ackT,apkT,appk,ipkv,info)
   call dgttrs('N',nx,nrhs,amkT,ackT,apkT,appk,ipkv,rhs(1, istart(2), istart(3)),nx,info)
   call nvtxEndRangeAsync
-  #endif
+#endif
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #else
+#else
   !$OMP PARALLEL DO &
   !$OMP DEFAULT(none) &
   !$OMP SHARED(rhs, vx, istart, iend, nxm) &
   !$OMP PRIVATE(ic, jc, kc)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     do jc=istart(2),iend(2)
        do kc=2,nxm
@@ -90,14 +90,14 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_X)(vx,rhs,am3ssk,ac3ck,ap3ssk)
        end do
     end do
   end do
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP END PARALLEL DO
-  #endif
+#endif
 
-  #ifdef DEBUG
+#ifdef DEBUG
   call compare(rhs,"rhsx")
   call compare(vx,"vx")
-  #endif
+#endif
 
   return
 

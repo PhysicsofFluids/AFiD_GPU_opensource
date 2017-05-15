@@ -29,17 +29,17 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_Temp)(temp,rhs,am3ssk,ac3ssk,ap3ssk)
   real(fp_kind), dimension(1:nx,xstart(2)-lvlhalo:xend(2)+lvlhalo,xstart(3)-lvlhalo:xend(3)+lvlhalo) :: temp
   real(fp_kind), dimension(1:nx ,xstart(2):xend(2),xstart(3):xend(3))  :: rhs
   real(fp_kind), dimension(1:nx), intent(IN) :: am3ssk,ac3ssk,ap3ssk
-  #ifdef USE_GPU
+#ifdef USE_GPU
   attributes(device) :: temp,rhs,am3ssk,ac3ssk,ap3ssk
-  #endif
+#endif
 
 
   integer :: jc,kc,info,ipkv(nx),ic,nrhs
   real(fp_kind) :: betadx,ackl_b
 
-  #ifndef USE_GPU
+#ifndef USE_GPU
   real(fp_kind) :: amkT(nx-1),ackT(nx),apkT(nx-1),appk(nx-2)
-  #endif
+#endif
 
   !     Calculate the coefficients of the tridiagonal matrix
   !     The coefficients are normalized to prevent floating
@@ -48,9 +48,9 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_Temp)(temp,rhs,am3ssk,ac3ssk,ap3ssk)
   betadx=real(0.5,fp_kind)*al*dt/pec
   nrhs=(iend(3)-istart(3)+1)*(iend(2)-istart(2)+1)
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(1) <<<*,*>>>
-  #endif
+#endif
   do kc=1,nx
     ackl_b=real(1.0,fp_kind)/(real(1.,fp_kind)-ac3ssk(kc)*betadx)
     amkl(kc)=-am3ssk(kc)*betadx*ackl_b
@@ -64,10 +64,10 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_Temp)(temp,rhs,am3ssk,ac3ssk,ap3ssk)
     end if
   enddo
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   call tepDgtsv_nopivot( nx, nrhs, amkl, ackl, apkl, rhs, nx)      
 
-  #else
+#else
 
   call nvtxStartRangeAsync("Solve CPU")
   amkT=amkl(2:nx)
@@ -81,17 +81,17 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_Temp)(temp,rhs,am3ssk,ac3ssk,ap3ssk)
 
   call dgttrs('N',nx,nrhs,amkT,ackT,apkT,appk,ipkv,rhs(1, istart(2), istart(3)),nx,info)
   call nvtxEndRangeAsync
-  #endif
+#endif
 
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #else
+#else
   !$OMP PARALLEL DO &
   !$OMP DEFAULT(none) &
   !$OMP SHARED(istart, iend, temp, rhs, nxm) &
   !$OMP PRIVATE(ic, jc, kc)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     do jc=istart(2),iend(2)
       do kc=2,nxm
@@ -99,9 +99,9 @@ subroutine MY_ROUTINE(SolveImpEqnUpdate_Temp)(temp,rhs,am3ssk,ac3ssk,ap3ssk)
       end do
     end do
   end do
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP END PARALLEL DO
-  #endif
+#endif
 
   return
 

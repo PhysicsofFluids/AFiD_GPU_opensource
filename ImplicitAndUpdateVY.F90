@@ -47,9 +47,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVY)(vy,pr,rhs,ruy,dph,am3sk,ac3sk,ap3sk,k
   betadx=beta*al
   udy=dy*al
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #else
+#else
   !$OMP  PARALLEL DO &
   !$OMP   DEFAULT(none) &
   !$OMP   SHARED(istart,iend,nxm,vy,pr) &
@@ -59,7 +59,7 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVY)(vy,pr,rhs,ruy,dph,am3sk,ac3sk,ap3sk,k
   !$OMP   PRIVATE(ic,jc,kc,kmm,kpp,jmm) &
   !$OMP   PRIVATE(amm,acc,app) &
   !$OMP   PRIVATE(dyp,dxxvy,ackl_b)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     do jc=istart(2),iend(2)
       jmm=jc-1
@@ -96,9 +96,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVY)(vy,pr,rhs,ruy,dph,am3sk,ac3sk,ap3sk,k
       enddo
     enddo
   enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP  END PARALLEL DO
-  #endif
+#endif
 
   !  Solve equation and update velocity
   call SolveImpEqnUpdate_YZ(vy,rhs,am3sk,ac3sk,ap3sk)

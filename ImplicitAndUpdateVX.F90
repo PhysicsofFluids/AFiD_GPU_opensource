@@ -43,9 +43,9 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVX)(vx,rhs,rux,qcap,pr,am3ck,ac3ck,ap3ck,
   alre=al/ren
   betadx=beta*al
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #else
+#else
   !$OMP  PARALLEL DO &
   !$OMP   DEFAULT(none) &
   !$OMP   SHARED(istart,iend,nxm,vx,pr) &
@@ -55,7 +55,7 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVX)(vx,rhs,rux,qcap,pr,am3ck,ac3ck,ap3ck,
   !$OMP   PRIVATE(ic,jc,kc,km,kp) &
   !$OMP   PRIVATE(amm,acc,app,udx3) &
   !$OMP   PRIVATE(dxxvx,dxp,ackl_b)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     do jc=istart(2),iend(2)
       do kc=2,nxm
@@ -92,27 +92,27 @@ subroutine MY_ROUTINE(ImplicitAndUpdateVX)(vx,rhs,rux,qcap,pr,am3ck,ac3ck,ap3ck,
       enddo
     enddo
   enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP  END PARALLEL DO
-  #endif
+#endif
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(2) <<<*,*>>>
-  #else
+#else
   !$OMP PARALLEL DO &
   !$OMP   DEFAULT(none) &
   !$OMP   SHARED(istart,iend,rhs,fp_kind, nx) &
   !$OMP   PRIVATE(ic, jc)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     do jc=istart(2),iend(2)
       rhs( 1,jc,ic)=real(0.0,fp_kind)
       rhs(nx,jc,ic)=real(0.0,fp_kind)
     end do
   end do
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP END PARALLEL DO
-  #endif
+#endif
 
 
   !  Solve equation and update velocity

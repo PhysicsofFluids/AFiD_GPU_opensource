@@ -44,13 +44,13 @@ subroutine MY_ROUTINE(ExplicitTermsVY)(vx,vy,vz,dph,udx3m,kmv,kpv)
   udy=dy*real(0.25,fp_kind)
   udz=dz*real(0.25,fp_kind)
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #endif
+#endif
   do ic=istart(3),iend(3)
     imm=ic-1
     ipp=ic+1
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP  PARALLEL DO &
   !$OMP  DEFAULT(none) &
   !$OMP  SHARED(istart,iend,vz,vy,vx,dz,dy) &
@@ -60,7 +60,7 @@ subroutine MY_ROUTINE(ExplicitTermsVY)(vx,vy,vz,dph,udx3m,kmv,kpv)
   !$OMP  PRIVATE(jc,kc,kmm,kp,kpp) &
   !$OMP  PRIVATE(jmm,jpp) &
   !$OMP  PRIVATE(hyx,hyy,hyz,dyyvy,dzzvy)
-  #endif 
+#endif 
     do jc=istart(2),iend(2)
       jmm=jc-1
       jpp=jc+1
@@ -123,9 +123,9 @@ subroutine MY_ROUTINE(ExplicitTermsVY)(vx,vy,vz,dph,udx3m,kmv,kpv)
         dph(kc,jc,ic)=-(hyx+hyy+hyz)+dyyvy+dzzvy
       enddo
     enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
     !$OMP  END PARALLEL DO
-  #endif
+#endif
   enddo
 
   return

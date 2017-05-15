@@ -27,9 +27,9 @@ subroutine MY_ROUTINE(CorrectVelocity)(vx,vy,vz,dphhalo,udx3c,kmv)
   real(fp_kind), dimension(1:nxm,xstart(2)-lvlhalo:xend(2)+lvlhalo,xstart(3)-lvlhalo:xend(3)+lvlhalo),intent(IN) :: dphhalo
   real(fp_kind), dimension(1:nx), intent(IN) :: udx3c
   integer, dimension(1:nx), intent(IN) :: kmv
-  #ifdef USE_GPU
+#ifdef USE_GPU
   attributes(device) :: vx,vy,vz,dphhalo,udx3c,kmv
-  #endif
+#endif
 
   integer :: jc,jm,kc,km,ic,im
   real(fp_kind)    :: usukm,udy,udz,locdph
@@ -37,16 +37,16 @@ subroutine MY_ROUTINE(CorrectVelocity)(vx,vy,vz,dphhalo,udx3c,kmv)
   udy = al*dt*dy
   udz = al*dt*dz
 
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do (3) <<<*,*>>>
-  #else
+#else
   !$OMP  PARALLEL DO &
   !$OMP   DEFAULT(none) &
   !$OMP   SHARED(vz,vy,vx,dphhalo,udz,udy,udx3c) &
   !$OMP   SHARED(istart,iend,nxm,kmv,dt,al) &
   !$OMP   PRIVATE(ic,jc,kc) &
   !$OMP   PRIVATE(im,jm,km,usukm,locdph)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     im=ic-1
     do jc=istart(2),iend(2)
@@ -64,9 +64,9 @@ subroutine MY_ROUTINE(CorrectVelocity)(vx,vy,vz,dphhalo,udx3c,kmv)
       enddo
     enddo
   enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP END PARALLEL DO
-  #endif
+#endif
   return
 
 end subroutine

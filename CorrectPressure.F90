@@ -27,16 +27,16 @@ subroutine MY_ROUTINE(CorrectPressure)(pr,dphhalo,amphk,acphk,apphk,kmv,kpv)
   real(fp_kind), dimension(1:nxm,xstart(2)-lvlhalo:xend(2)+lvlhalo,xstart(3)-lvlhalo:xend(3)+lvlhalo) :: dphhalo
   real(fp_kind), dimension(1:nx), intent(IN) :: amphk,acphk,apphk
   integer, dimension(1:nx), intent(IN) :: kmv,kpv
-  #ifdef USE_GPU
+#ifdef USE_GPU
   attributes(device) :: pr,dphhalo,amphk,acphk,apphk,kmv,kpv
-  #endif
+#endif
   integer :: kp,km,jm,jp,jc,kc,ic,ip,im
   real(fp_kind)    :: be,amm,acc,app
 
   be=al*beta
-  #ifdef USE_GPU
+#ifdef USE_GPU
   !$cuf kernel do(3) <<<*,*>>>
-  #else
+#else
   !$OMP  PARALLEL DO &
   !$OMP   DEFAULT(none) &
   !$OMP   SHARED(pr,dphhalo,be,amphk,acphk,apphk) &
@@ -44,7 +44,7 @@ subroutine MY_ROUTINE(CorrectPressure)(pr,dphhalo,amphk,acphk,apphk,kmv,kpv)
   !$OMP   PRIVATE(ic,jc,kc) &
   !$OMP   PRIVATE(im,jm,km,ip,jp,kp) &
   !$OMP   PRIVATE(amm,acc,app)
-  #endif
+#endif
   do ic=istart(3),iend(3)
     im=ic-1
     ip=ic+1
@@ -70,9 +70,9 @@ subroutine MY_ROUTINE(CorrectPressure)(pr,dphhalo,amphk,acphk,apphk,kmv,kpv)
       enddo
     enddo
   enddo
-  #ifndef USE_GPU
+#ifndef USE_GPU
   !$OMP END PARALLEL DO
-  #endif
+#endif
   return
 
 end subroutine
