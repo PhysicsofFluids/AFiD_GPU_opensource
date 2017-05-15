@@ -42,7 +42,6 @@ afid_hyb: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc35,cuda7.0,ptxinfo,madc
 #-DDEBUG
 #-Mcuda=nofma
 
-
 OBJ= param.o \
      mpiDeviceUtil.o \
      decomp_2d.o \
@@ -50,21 +49,14 @@ OBJ= param.o \
      decomp_2d_fft.o \
      AuxiliaryRoutines.o \
      CalcDissipationNu.o  \
-     CalcLocalDivergence.o \
      CalcMaxCFL.o \
      CalcPlateNu.o \
      CheckDivergence.o  \
-     CorrectPressure.o \
-     CorrectVelocity.o \
      CreateGrid.o  \
      CreateInitialConditions.o \
      DeallocateVariables.o \
      DebugRoutines.o      \
      GlobalQuantities.o \
-     ExplicitTermsTemp.o \
-     ExplicitTermsVX.o \
-     ExplicitTermsVY.o \
-     ExplicitTermsVZ.o \
      HdfRoutines.o \
      HdfReadContinua.o  \
      interp.o \
@@ -79,34 +71,43 @@ OBJ= param.o \
      SetTempBCs.o \
      SlabDumpRoutines.o \
      SolverInterfaces.o \
-     SolveImpEqnUpdate_Temp.o \
-     SolveImpEqnUpdate_X.o \
-     SolveImpEqnUpdate_YZ.o \
      SolvePressureCorrection.o \
      TimeMarcher.o \
      WriteFlowField.o \
      WriteGridInfo.o \
-     ImplicitAndUpdateTemp.o \
-     ImplicitAndUpdateVX.o \
-     ImplicitAndUpdateVY.o \
-     ImplicitAndUpdateVZ.o \
      InitPressureSolver.o \
      StatReadReduceWrite.o \
      StatRoutines.o \
      main.o  
 
-# Ensure modification of included "common" files triggers full recompilation
-# Can be made a bit less aggresive with more verbose dependency listing
-AUX_DEP= $(wildcard *_common.F90)
+# Objects which require two compilation passes for hybrid version
+OBJ2= CalcLocalDivergence.o \
+      CorrectPressure.o \
+      CorrectVelocity.o \
+      ExplicitTermsVX.o \
+      ExplicitTermsVY.o \
+      ExplicitTermsVZ.o \
+      ExplicitTermsTemp.o \
+      ImplicitAndUpdateVX.o \
+      ImplicitAndUpdateVY.o \
+      ImplicitAndUpdateVZ.o \
+      ImplicitAndUpdateTemp.o \
+      SolveImpEqnUpdate_X.o \
+      SolveImpEqnUpdate_YZ.o\
+      SolveImpEqnUpdate_Temp.o
 
 # Create the subdirectory for objects
 OBJDIRCPU := $(shell mkdir -p Obj_cpu)
 OBJDIRGPU := $(shell mkdir -p Obj_gpu)
-OBJDIRHYB := $(shell mkdir -p Obj_hyb)
+OBJDIRHYB := $(shell mkdir -p Obj_hyb Obj_hyb/cpu Obj_hyb/gpu)
 
 OBJ_CPU = $(foreach O, ${OBJ}, Obj_cpu/$(O))
+OBJ_CPU += $(foreach O, ${OBJ2}, Obj_cpu/$(O))
 OBJ_GPU = $(foreach O, ${OBJ}, Obj_gpu/$(O))
+OBJ_GPU += $(foreach O, ${OBJ2}, Obj_gpu/$(O))
 OBJ_HYB = $(foreach O, ${OBJ}, Obj_hyb/$(O))
+OBJ_HYB += $(foreach O, ${OBJ2}, Obj_hyb/cpu/$(O))
+OBJ_HYB += $(foreach O, ${OBJ2}, Obj_hyb/gpu/$(O))
 
 
 Obj_gpu/%.o: %.F90  $(AUX_DEP)
@@ -127,6 +128,12 @@ Obj_hyb/%.o: %.F90  $(AUX_DEP)
 Obj_hyb/%.o: %.CUF 
 	$(FC) -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_hyb
 
+Obj_hyb/cpu/%.o: %.F90  $(AUX_DEP)
+	$(FC) -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_hyb
+
+Obj_hyb/gpu/%.o: %.F90  $(AUX_DEP)
+	$(FC) -c  $(FFLAGS) -DUSE_GPU $(INCLUDE)  $< -o $@ -module=Obj_hyb
+
 afid_gpu: ${OBJ_GPU}
 	$(LINKER)  $(FFLAGS) $(OBJ_GPU) $(FCLIBS) $(LDFLAGS) -o afid_gpu 
 
@@ -137,4 +144,4 @@ afid_hyb: $(OBJ_HYB)
 	$(LINKER) $(FFLAGS) $(OBJ_HYB) $(FCLIBS) $(LDFLAGS) -o afid_hyb 
 
 clean:
-	rm  afid_cpu afid_gpu afid_hyb Obj_cpu/*.o  Obj_gpu/*.o  Obj_cpu/*.mod  Obj_gpu/*.mod Obj_hyb/*.o Obj_hyb/*.mod
+	rm  afid_cpu afid_gpu afid_hyb Obj_cpu/*.o  Obj_gpu/*.o  Obj_cpu/*.mod  Obj_gpu/*.mod Obj_hyb/*.o Obj_hyb/*.mod Obj_hyb/cpu/*.o Obj_hyb/gpu/*.o

@@ -34,21 +34,14 @@ OBJ= param.o \
      decomp_2d_fft.o \
      AuxiliaryRoutines.o \
      CalcDissipationNu.o  \
-     CalcLocalDivergence.o \
      CalcMaxCFL.o \
      CalcPlateNu.o \
      CheckDivergence.o  \
-     CorrectPressure.o \
-     CorrectVelocity.o \
      CreateGrid.o  \
      CreateInitialConditions.o \
      DeallocateVariables.o \
      DebugRoutines.o      \
      GlobalQuantities.o \
-     ExplicitTermsTemp.o \
-     ExplicitTermsVX.o \
-     ExplicitTermsVY.o \
-     ExplicitTermsVZ.o \
      HdfRoutines.o \
      HdfReadContinua.o  \
      interp.o \
@@ -63,30 +56,43 @@ OBJ= param.o \
      SetTempBCs.o \
      SlabDumpRoutines.o \
      SolverInterfaces.o \
-     SolveImpEqnUpdate_Temp.o \
-     SolveImpEqnUpdate_X.o \
-     SolveImpEqnUpdate_YZ.o \
      SolvePressureCorrection.o \
      TimeMarcher.o \
      WriteFlowField.o \
      WriteGridInfo.o \
-     ImplicitAndUpdateTemp.o \
-     ImplicitAndUpdateVX.o \
-     ImplicitAndUpdateVY.o \
-     ImplicitAndUpdateVZ.o \
      InitPressureSolver.o \
      StatReadReduceWrite.o \
      StatRoutines.o \
      main.o  
 
+# Objects which require two compilation passes for hybrid version
+OBJ2= CalcLocalDivergence.o \
+      CorrectPressure.o \
+      CorrectVelocity.o \
+      ExplicitTermsVX.o \
+      ExplicitTermsVY.o \
+      ExplicitTermsVZ.o \
+      ExplicitTermsTemp.o \
+      ImplicitAndUpdateVX.o \
+      ImplicitAndUpdateVY.o \
+      ImplicitAndUpdateVZ.o \
+      ImplicitAndUpdateTemp.o \
+      SolveImpEqnUpdate_X.o \
+      SolveImpEqnUpdate_YZ.o\
+      SolveImpEqnUpdate_Temp.o
+
 # Create the subdirectory for objects
 OBJDIRCPU := $(shell mkdir -p Obj_cpu)
 OBJDIRGPU := $(shell mkdir -p Obj_gpu)
-OBJDIRHYB := $(shell mkdir -p Obj_hyb)
-
+OBJDIRHYB := $(shell mkdir -p Obj_hyb Obj_hyb/cpu Obj_hyb/gpu)
 
 OBJ_CPU = $(foreach O, ${OBJ}, Obj_cpu/$(O))
+OBJ_CPU += $(foreach O, ${OBJ2}, Obj_cpu/$(O))
 OBJ_GPU = $(foreach O, ${OBJ}, Obj_gpu/$(O))
+OBJ_GPU += $(foreach O, ${OBJ2}, Obj_gpu/$(O))
+OBJ_HYB = $(foreach O, ${OBJ}, Obj_hyb/$(O))
+OBJ_HYB += $(foreach O, ${OBJ2}, Obj_hyb/cpu/$(O))
+OBJ_HYB += $(foreach O, ${OBJ2}, Obj_hyb/gpu/$(O))
 
 Obj_gpu/%.o: %.F90 
 	pgf90 -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_gpu
