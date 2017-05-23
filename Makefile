@@ -33,7 +33,7 @@ afid_cpu: FFLAGS = -O3 -mp -Kieee -DPASS_ARRAYS
 #-DDEBUG
 
 # Flags for CUDA  version
-afid_gpu: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc35,cuda7.0,ptxinfo,madconst -Kieee -Mlarge_arrays -DUSE_NVTX
+afid_gpu: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc35,cuda7.0,ptxinfo,madconst -Kieee -Mlarge_arrays -DUSE_NVTX -DUSE_GPU
 #-DDEBUG
 #-Mcuda=nofma
 
