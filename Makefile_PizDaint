@@ -3,7 +3,7 @@
 # module load pgi cudatoolkit fftw cray-hdf5-parallel/1.8.16 intel
 # module swap PrgEnv-cray PrgEnv-pgi
 #
-all: afid_gpu afid_cpu
+all: afid_gpu afid_cpu afid_hyb
 
 # Flags for CPU version
 afid_cpu: FFLAGS = -O3  -Kieee
