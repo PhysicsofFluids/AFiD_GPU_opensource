@@ -199,8 +199,6 @@
 
       endif
 
-#ifdef USE_HYBRID
-!JR If using hybrid, only allocate partial pencil data on GPU
       allocate(vx_d(1:nx,xstart_gpu(2)-lvlhalo:xend_gpu(2)+lvlhalo,xstart_gpu(3)-lvlhalo:xend_gpu(3)+lvlhalo))
       allocate(vy_d(1:nx,xstart_gpu(2)-lvlhalo:xend_gpu(2)+lvlhalo,xstart_gpu(3)-lvlhalo:xend_gpu(3)+lvlhalo))
       allocate(vz_d(1:nx,xstart_gpu(2)-lvlhalo:xend_gpu(2)+lvlhalo,xstart_gpu(3)-lvlhalo:xend_gpu(3)+lvlhalo))
@@ -213,10 +211,13 @@
       allocate(hro_d(1:nx, xstart_gpu(2):xend_gpu(2), xstart_gpu(3):xend_gpu(3)))
       allocate(rutemp_d(1:nx, xstart_gpu(2):xend_gpu(2), xstart_gpu(3):xend_gpu(3)))
 
+      allocate(dph_d(1:nxm,xstart(2):xend(2),xstart(3):xend(3)))
+
 !JR These arrays are mapped to existing buffers to save memory. See top of TimeMarcher subroutine to see mapping.
       !allocate(rhs_d(1:nx, xstart_gpu(2):xend_gpu(2), xstart_gpu(3):xend_gpu(3)))
       !allocate(dq_d(1:nx, xstart_gpu(2):xend_gpu(2), xstart_gpu(3):xend_gpu(3)))
       !allocate(qcap_d(1:nx, xstart_gpu(2):xend_gpu(2), xstart_gpu(3):xend_gpu(3)))
+      !allocate(dphhalo_d,source=dphhalo)
 
 !JR Initialize data on GPU 
       vx_d = 0.0_fp_kind
@@ -230,29 +231,8 @@
       ruz_d = 0.0_fp_kind
       rutemp_d = 0.0_fp_kind
       hro_d = 0.0_fp_kind
-#else
-      allocate(vx_d,source=vx)
-      allocate(vy_d,source=vy)
-      allocate(vz_d,source=vz)
-      allocate(pr_d,source=pr)
-      allocate(temp_d,source=temp)
+      dph_d = 0.0_fp_kind
 
-!JR These arrays are mapped to existing buffers to save memory. See top of TimeMarcher subroutine to see mapping.
-      !allocate(rhs_d,source=rhs)
-      !allocate(dq_d,source=dq)
-      !allocate(qcap_d,source=qcap)
-
-      allocate(rux_d,source=rux)
-      allocate(ruy_d,source=ruy)
-      allocate(ruz_d,source=ruz)
-      allocate(hro_d,source=hro)
-      allocate(rutemp_d,source=rutemp)
-
-#endif
-
-!JR This array is mapped to existing buffers to save memory. See top of TimeMarcher subroutine to see mapping.
-      !allocate(dphhalo_d,source=dphhalo)
-      allocate(dph_d,source=dph)
       
 !JR   Arrays preallocated here to avoid device synchronization caused by
 !     static array allocation
