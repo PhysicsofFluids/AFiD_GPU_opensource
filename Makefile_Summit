@@ -1,0 +1,101 @@
+#
+# Makefile for Summit
+# module load pgi/18.4 cuda/9.1.76  hdf5/1.10.0-patch1  essl
+#
+all: afid_gpu 
+
+# Flags for CUDA  version
+afid_gpu: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc70,cuda9.1,ptxinfo,madconst -Kieee -Mlarge_arrays -DUSE_GPU
+
+CUDA_HOME = $(CUDAPATH)
+INCLUDE=  -I $(OLCF_HDF5_ROOT)/include
+
+FFTW3_BIN = 
+FFTW3_LIBS = #-L$(OLCF_ESSL_ROOT)/FFTW  -lfftw3_threads -lfftw3
+FFTW3_LIBS = $(OLCF_ESSL_ROOT)/lib64/libfftw3_essl.a
+HDF5_LIBS = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5  -lrt -lz -ldl -lm
+BLAS_LIBS=  -L$(OLCF_ESSL_ROOT)/lib64 -lessl
+
+LDFLAGS = -Mcudalib=cufft -L$(CUDA_HOME)/lib64 -lnvToolsExt  $(HDF5_LIBS) $(FFTW3_LIBS) $(BLAS_LIBS)
+
+OBJ= param.o \
+     mpiDeviceUtil.o \
+     decomp_2d.o \
+     tridiag.o \
+     decomp_2d_fft.o \
+     dph_routines.o \
+     hybrid_comm_routines.o \
+     AuxiliaryRoutines.o \
+     CalcDissipationNu.o  \
+     CalcMaxCFL.o \
+     CalcPlateNu.o \
+     CheckDivergence.o  \
+     CreateGrid.o  \
+     CreateInitialConditions.o \
+     DeallocateVariables.o \
+     DebugRoutines.o      \
+     GlobalQuantities.o \
+     HdfRoutines.o \
+     HdfReadContinua.o  \
+     interp.o \
+     InitVariables.o \
+     InitTimeMarchScheme.o \
+     LocateLargeDivergence.o \
+     MpiAuxRoutines.o \
+     QuitRoutine.o \
+     ReadFlowField.o \
+     ReadInputFile.o \
+     ResetLogs.o \
+     SetTempBCs.o \
+     SlabDumpRoutines.o \
+     SolverInterfaces.o \
+     SolvePressureCorrection.o \
+     TimeMarcher.o \
+     WriteFlowField.o \
+     WriteGridInfo.o \
+     InitPressureSolver.o \
+     StatReadReduceWrite.o \
+     StatRoutines.o \
+     main.o  
+
+# Objects which require two compilation passes for hybrid version
+OBJ2= CalcLocalDivergence.o \
+      CorrectPressure.o \
+      CorrectVelocity.o \
+      ExplicitTermsVX.o \
+      ExplicitTermsVY.o \
+      ExplicitTermsVZ.o \
+      ExplicitTermsTemp.o \
+      ImplicitAndUpdateVX.o \
+      ImplicitAndUpdateVY.o \
+      ImplicitAndUpdateVZ.o \
+      ImplicitAndUpdateTemp.o \
+      SolveImpEqnUpdate_X.o \
+      SolveImpEqnUpdate_YZ.o\
+      SolveImpEqnUpdate_Temp.o
+
+# Create the subdirectory for objects
+OBJDIRCPU := $(shell mkdir -p Obj_cpu)
+OBJDIRGPU := $(shell mkdir -p Obj_gpu)
+OBJDIRHYB := $(shell mkdir -p Obj_hyb Obj_hyb/cpu Obj_hyb/gpu)
+
+OBJ_CPU = $(foreach O, ${OBJ}, Obj_cpu/$(O))
+OBJ_CPU += $(foreach O, ${OBJ2}, Obj_cpu/$(O))
+OBJ_GPU = $(foreach O, ${OBJ}, Obj_gpu/$(O))
+OBJ_GPU += $(foreach O, ${OBJ2}, Obj_gpu/$(O))
+OBJ_HYB = $(foreach O, ${OBJ}, Obj_hyb/$(O))
+OBJ_HYB += $(foreach O, ${OBJ2}, Obj_hyb/cpu/$(O))
+OBJ_HYB += $(foreach O, ${OBJ2}, Obj_hyb/gpu/$(O))
+
+Obj_gpu/%.o: %.F90 
+	mpif90 -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_gpu
+
+Obj_gpu/%.o: %.CUF 
+	mpipgf90 -c  $(FFLAGS) $(INCLUDE)  $< -o $@ -module=Obj_gpu
+
+afid_gpu: ${OBJ_GPU}
+	mpif90 $(FFLAGS) $(OBJ_GPU) $(FCLIBS) $(LDFLAGS) -o afid_gpu 
+
+
+clean:
+	rm  afid_cpu afid_gpu Obj_cpu/*.o  Obj_gpu/*.o  Obj_cpu/*.mod  Obj_gpu/*.mod 
