@@ -11,7 +11,7 @@ afid_cpu: FFLAGS = -O3  -Kieee
 #afid_cpu: FFLAGS = -O3  -DDEBUG -mp
 
 # Flags for CUDA  version
-afid_gpu: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc60,cuda8.0,ptxinfo,madconst -Kieee -Mlarge_arrays -DUSE_GPU
+afid_gpu: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc60,cuda8.0,ptxinfo,madconst -Kieee -Mlarge_arrays -Mallocatable=95 -DUSE_GPU
 #-DDEBUG
 #FFLAGS= -DUSE_CUDA -Mcuda=cc35,ptxinfo,cuda6.5,nollvm,keepgpu -Minfo  -DDEBUG
 

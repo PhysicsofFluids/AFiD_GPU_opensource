@@ -5,7 +5,7 @@
 all: afid_gpu 
 
 # Flags for CUDA  version
-afid_gpu: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc70,cuda9.1,ptxinfo,madconst -Kieee -Mlarge_arrays -DUSE_GPU
+afid_gpu: FFLAGS = -O3 -DUSE_CUDA -DPASS_ARRAYS -Mcuda=cc70,cuda9.1,ptxinfo,madconst -Kieee -Mlarge_arrays -Mallocatable=95 -DUSE_GPU
 
 CUDA_HOME = $(CUDAPATH)
 INCLUDE=  -I $(OLCF_HDF5_ROOT)/include
