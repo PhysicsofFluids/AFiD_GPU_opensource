@@ -729,7 +729,7 @@ contains
        work1_c_d = (0.d0,0.d0)
     end if
     if(alloc_work_r == 1) then
-       cptr1 = C_devloc(work1_c_d(buf_size/2))
+       cptr1 = C_devloc(work1_c_d(buf_size/2 + 1))
        call C_F_pointer(cptr1,work1_r_d,[buf_size])
        cptr2 = C_devloc(work1_c_d)
        call C_F_pointer(cptr2,work2_r_d,[buf_size])
