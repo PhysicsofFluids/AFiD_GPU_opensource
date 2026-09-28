@@ -6,7 +6,7 @@ When using this code please cite
 
 X. Zhu, E. Phillips, V. Spandan, J. Donners, G. Ruetsch, J. Romero, R. Ostilla-Mónico, Y. Yang, D. Lohse, R. Verzicco, M. Fatica, R.J.A.M. Stevens,
 AFiD-GPU: a versatile Navier-Stokes Solver for Wall-Bounded Turbulent Flows on GPU Clusters,
-Submitted to Computer Physics Communications, see ArXiv paper https://arxiv.org/abs/1705.01423
+Computer Physics Communications 229, 199–210 (2018), https://doi.org/10.1016/j.cpc.2018.03.026. Author manuscript: https://arxiv.org/abs/1705.01423
 
 for a description of the GPU version of the code and 
 
