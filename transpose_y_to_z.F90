@@ -210,6 +210,10 @@
     integer :: ierror,istat
     integer :: i,j,k,m,i1,i2,pos,dest,sorc,iter
 
+#ifdef USE_CUDECOMP
+    call cu_transpose_complex(src, dst, decomp, 2, 3)
+#else
+
 call nvtxStartRange("tranYZ",1)
 
 #ifdef EPA2A
@@ -421,6 +425,7 @@ endif
 call nvtxEndRange
 
     return
+#endif
   end subroutine transpose_y_to_z_complex_d
 
 #endif

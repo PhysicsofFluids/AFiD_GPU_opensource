@@ -117,3 +117,92 @@ To submit a job on Piz Daint, you can use the sample script below.
 `srun -n 12 ./afid_gpu`
 
 `################################`
+### Building with cuDecomp
+
+`Makefile_cudecomp` builds the GPU solver as `afid_cudecomp`, with separate
+objects in `Obj_cudecomp`. GPU transposes and halo exchanges use
+[cuDecomp](https://github.com/NVIDIA/cuDecomp) through its Fortran bindings.
+This build requires a current NVIDIA HPC SDK, CUDA-aware MPI, parallel HDF5,
+FFTW3, BLAS/LAPACK, and cuDecomp built with `CUDECOMP_BUILD_FORTRAN=ON` using
+compatible NVHPC, CUDA and MPI versions. The integration was compiled against
+cuDecomp 0.7.0 (upstream commit `7312115`; use the current upstream Fortran API).
+
+Build and install cuDecomp following its upstream instructions, taking care of 
+enabling the Fortran binding:
+
+`cmake -DCUDECOMP_BUILD_EXTRAS=1 -DCUDECOMP_ENABLE_NVSHMEM=1 -DCUDECOMP_BUILD_FORTRAN=1 -DCMAKE_INSTALL_PREFIX=/usr/local/cuDecomp ..`
+
+then run:
+```sh
+make -f Makefile_cudecomp CUDECOMP_ROOT=/path/to/cudecomp/install \
+    HDF5_ROOT=/path/to/parallel/hdf5
+```
+
+`FC` defaults to `mpif90`; configure the MPI wrapper to use `nvfortran`.
+Override `GPU_FLAGS` (default `-gpu=ccnative`), `BLAS_LIBS`, `FFTW3_LIBS`,
+`HDF5_LIBS`, or `CUDECOMP_LIBDIR` as required by your system. For example,
+NVPL installations can use
+`BLAS_LIBS='-lnvpl_lapack_lp64_seq -lnvpl_blas_lp64_seq'`.
+Run `afid_cudecomp` using the usual `bou.in`, with one MPI rank per GPU.
+Pass a communication backend alone to autotune the decomposition shape with
+that backend, or supply it after an explicit process grid:
+
+```sh
+mpirun -n 2 ./afid_cudecomp nccl
+mpirun -n 2 ./afid_cudecomp 1 2 nccl
+mpirun -n 2 ./afid_cudecomp 0 0 mpi-a2a
+```
+
+A backend alone is equivalent to `0 0 backend`. With two or three arguments,
+the first two specify the process grid; `0 0` benchmarks valid grid shapes and
+selects the fastest using the chosen backend. With no arguments, the grid shape
+is autotuned using the default backend.
+Backend names are case insensitive; the corresponding numeric IDs also work:
+
+| ID | Backend | Halo transport |
+| --- | --- | --- |
+| 1 | `mpi-p2p` (default) | MPI |
+| 2 | `mpi-p2p-pl` | MPI |
+| 3 | `mpi-a2a` | MPI |
+| 4 | `nccl` | NCCL |
+| 5 | `nccl-pl` | NCCL |
+| 6 | `nvshmem` | NVSHMEM |
+| 7 | `nvshmem-pl` | NVSHMEM |
+| 8 | `nvshmem-sm` | NVSHMEM |
+
+`-pl` selects pipelining; `nvshmem-sm` uses SM-based peer transfers.
+The selection applies to every physical, spectral, and halo descriptor.
+Omitting the backend preserves MPI peer-to-peer transposes and MPI halos.
+NCCL and NVSHMEM require support in the installed cuDecomp library and their
+respective runtime configuration; unavailable backends fail during grid creation.
+Builds without `USE_CUDECOMP` reject the backend argument.
+
+This build selects `USE_CUDECOMP` alongside `USE_CUDA` and `USE_GPU`.
+It supports the physical and reduced spectral grids, the spectral W pencil
+used by the pressure solve, explicit or automatically selected process grids,
+and periodic or nonperiodic halo exchanges. The physical array order remains
+`(x,y,z)`. For uneven grids, remainder cells belong to the first process-grid
+coordinates to match cuDecomp; local starts and I/O offsets follow this rule.
+Halo exchanges run in Y then Z order to propagate corners. Communication uses
+the selected cuDecomp backend and returns after GPU work completes.
+The existing makefiles retain the legacy CPU, GPU and hybrid paths;
+`USE_CUDECOMP` does not support the hybrid CPU/GPU decomposition.
+
+Build the exact-value communication regression with:
+
+```sh
+make -f Makefile_cudecomp check-build CUDECOMP_ROOT=/path/to/cudecomp/install
+mpirun -n 1 ./test_cudecomp 1 1 1
+mpirun -n 6 ./test_cudecomp 2 3 1
+mpirun -n 6 ./test_cudecomp 3 2 0
+mpirun -n 2 ./test_cudecomp 0 0 1
+mpirun -n 2 ./test_cudecomp 0 0 0
+```
+
+The regression checks real and complex transposes, the W pencil, uneven
+physical and spectral grids, and halo faces and corners at widths one and two.
+The third argument selects periodic (`1`) or nonperiodic (`0`) Y/Z boundaries.
+An optional fourth argument selects the backend using the same names or IDs as
+above, for example `mpirun -n 2 ./test_cudecomp 1 2 1 nccl`.
+Zero process-grid dimensions exercise automatic process-grid selection.
+Each rank needs its own GPU. Successful runs report zero mismatches.

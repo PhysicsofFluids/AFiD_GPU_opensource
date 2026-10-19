@@ -1,0 +1,98 @@
+# NVHPC + CUDA-aware MPI build. Keep objects separate from legacy builds.
+.DEFAULT_GOAL := all
+.NOTPARALLEL:
+FC = mpif90
+CUDECOMP_ROOT ?= /usr/local/cuDecomp
+CUDECOMP_LIBDIR ?= $(CUDECOMP_ROOT)/lib
+HDF5_ROOT ?= /usr/local/hdf5_parallel
+GPU_FLAGS ?= -gpu=ccnative
+FFLAGS = -O3 -cuda $(GPU_FLAGS) -Kieee -Mlarge_arrays -Mallocatable=95 \
+         -DUSE_CUDA -DUSE_GPU -DUSE_CUDECOMP -DPASS_ARRAYS
+INCLUDE = -I$(CUDECOMP_ROOT)/include -I$(HDF5_ROOT)/include -IObj_cudecomp
+FFTW3_LIBS ?= -lfftw3
+BLAS_LIBS ?= -llapack -lblas
+HDF5_LIBS ?= -L$(HDF5_ROOT)/lib -lhdf5_fortran -lhdf5 -lz -ldl -lm
+LDFLAGS = -cudalib=cufft -L$(CUDECOMP_LIBDIR) -Wl,-rpath,$(CUDECOMP_LIBDIR) \
+          -lcudecomp_fort -lcudecomp $(FFTW3_LIBS) $(BLAS_LIBS) $(HDF5_LIBS)
+
+OBJ = param.o \
+     mpiDeviceUtil.o \
+     decomp_2d.o \
+     tridiag.o \
+     decomp_2d_fft.o \
+     dph_routines.o \
+     hybrid_comm_routines.o \
+     AuxiliaryRoutines.o \
+     CalcDissipationNu.o  \
+     CalcMaxCFL.o \
+     CalcPlateNu.o \
+     CheckDivergence.o  \
+     CreateGrid.o  \
+     CreateInitialConditions.o \
+     DeallocateVariables.o \
+     DebugRoutines.o      \
+     GlobalQuantities.o \
+     HdfRoutines.o \
+     HdfReadContinua.o  \
+     interp.o \
+     InitVariables.o \
+     InitTimeMarchScheme.o \
+     LocateLargeDivergence.o \
+     MpiAuxRoutines.o \
+     QuitRoutine.o \
+     ReadFlowField.o \
+     ReadInputFile.o \
+     ResetLogs.o \
+     SetTempBCs.o \
+     SlabDumpRoutines.o \
+     SolverInterfaces.o \
+     SolvePressureCorrection.o \
+     TimeMarcher.o \
+     WriteFlowField.o \
+     WriteGridInfo.o \
+     InitPressureSolver.o \
+     StatReadReduceWrite.o \
+     StatRoutines.o \
+     main.o \
+      CalcLocalDivergence.o \
+      CorrectPressure.o \
+      CorrectVelocity.o \
+      ExplicitTermsVX.o \
+      ExplicitTermsVY.o \
+      ExplicitTermsVZ.o \
+      ExplicitTermsTemp.o \
+      ImplicitAndUpdateVX.o \
+      ImplicitAndUpdateVY.o \
+      ImplicitAndUpdateVZ.o \
+      ImplicitAndUpdateTemp.o \
+      SolveImpEqnUpdate_X.o \
+      SolveImpEqnUpdate_YZ.o\
+      SolveImpEqnUpdate_Temp.o
+
+
+OBJECTS = $(addprefix Obj_cudecomp/,$(OBJ))
+COMM_INCLUDES = cudecomp_backend.F90 halo.F90 halo_common.F90 halo_common_gpu.F90 \
+                $(wildcard transpose_?_to_?.F90) factor.F90 alloc.F90
+
+.PHONY: all check-build
+all: afid_cudecomp
+
+afid_cudecomp: $(OBJECTS)
+	$(FC) $(FFLAGS) $(OBJECTS) $(LDFLAGS) -o $@
+
+Obj_cudecomp:
+	mkdir -p $@
+
+Obj_cudecomp/%.o: %.F90 $(COMM_INCLUDES) Makefile_cudecomp | Obj_cudecomp
+	$(FC) -c $(FFLAGS) $(INCLUDE) $< -o $@ -module=Obj_cudecomp
+
+# Module producers precede consumers, including incremental rebuilds.
+Obj_cudecomp/mpiDeviceUtil.o: Obj_cudecomp/param.o
+Obj_cudecomp/decomp_2d.o: Obj_cudecomp/param.o Obj_cudecomp/mpiDeviceUtil.o
+$(filter-out Obj_cudecomp/param.o Obj_cudecomp/mpiDeviceUtil.o Obj_cudecomp/decomp_2d.o,$(OBJECTS)): Obj_cudecomp/decomp_2d.o
+
+check-build: test_cudecomp
+
+test_cudecomp: Obj_cudecomp/param.o Obj_cudecomp/mpiDeviceUtil.o Obj_cudecomp/decomp_2d.o tests/test_cudecomp.F90
+	$(FC) $(FFLAGS) $(INCLUDE) tests/test_cudecomp.F90 $(filter %.o,$^) \
+	  -L$(CUDECOMP_LIBDIR) -Wl,-rpath,$(CUDECOMP_LIBDIR) -lcudecomp_fort -lcudecomp -o $@

@@ -173,6 +173,10 @@
     integer :: ierror, istat
     integer :: i,j,k, m,i1,i2,pos
 
+#ifdef USE_CUDECOMP
+    call cu_transpose_real(src, dst, decomp, 3, 1)
+#else
+
     s1 = SIZE(src,1)
     s2 = SIZE(src,2)
     s3 = SIZE(src,3)
@@ -227,6 +231,7 @@
 
 
     return
+#endif
   end subroutine transpose_z_to_x_real_d
 
 
@@ -241,6 +246,10 @@
     integer :: s1,s2,s3,d1,d2,d3
     integer :: ierror, istat
     integer :: i,j,k, m,i1,i2,pos,iter,dest,sorc
+
+#ifdef USE_CUDECOMP
+    call cu_transpose_complex(src, dst, decomp, 3, 1)
+#else
 
 call nvtxStartRange("tranZX",2)
 
@@ -414,6 +423,7 @@ call nvtxEndRangeAsync
 
 call nvtxEndRange
     return
+#endif
   end subroutine transpose_z_to_x_complex_d
 #endif
 
