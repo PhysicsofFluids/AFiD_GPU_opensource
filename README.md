@@ -127,8 +127,12 @@ FFTW3, BLAS/LAPACK, and cuDecomp built with `CUDECOMP_BUILD_FORTRAN=ON` using
 compatible NVHPC, CUDA and MPI versions. The integration was compiled against
 cuDecomp 0.7.0 (upstream commit `7312115`; use the current upstream Fortran API).
 
-Build and install cuDecomp following its upstream instructions, then run:
+Build and install cuDecomp following its upstream instructions, taking care of 
+enabling the Fortran binding:
 
+`cmake -DCUDECOMP_BUILD_EXTRAS=1 -DCUDECOMP_ENABLE_NVSHMEM=1 -DCUDECOMP_BUILD_FORTRAN=1 -DCMAKE_INSTALL_PREFIX=/usr/local/cuDecomp ..`
+
+then run:
 ```sh
 make -f Makefile_cudecomp CUDECOMP_ROOT=/path/to/cudecomp/install \
     HDF5_ROOT=/path/to/parallel/hdf5
