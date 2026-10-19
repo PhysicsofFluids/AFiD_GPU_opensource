@@ -21,6 +21,7 @@
       real(fp_kind) :: ts
       integer :: prow=0,pcol=0
       character(100) :: arg
+      character(100) :: comm_backend
 
 !*******************************************************
 !******* Read input file bou.in by all processes********
@@ -28,15 +29,49 @@
 !
       call ReadInputFile
 
-      if (command_argument_count().eq.2) then
+      select case (command_argument_count())
+      case (0)
+      case (1)
+#ifdef USE_CUDECOMP
+        ! Keep the default 0 x 0 grid so best_2d_grid tunes the shape.
+        call get_command_argument(1,comm_backend)
+#else
+        write(*,*) 'Backend selection requires a USE_CUDECOMP build'
+        stop 1
+#endif
+      case (2,3)
+#ifndef USE_CUDECOMP
+        if (command_argument_count().eq.3) then
+          write(*,*) 'Backend selection requires a USE_CUDECOMP build'
+          stop 1
+        endif
+#endif
         call get_command_argument(1,arg)
-        read(arg,'(i10)') prow
+        read(arg,*,iostat=errorcode) prow
+        if (errorcode.ne.0) then
+          write(*,*) 'Invalid process-row count: ', trim(arg)
+          stop 1
+        endif
         call get_command_argument(2,arg)
-        read(arg,'(i10)') pcol
-      endif
+        read(arg,*,iostat=errorcode) pcol
+        if (errorcode.ne.0) then
+          write(*,*) 'Invalid process-column count: ', trim(arg)
+          stop 1
+        endif
+      case default
+        write(*,*) 'Usage: afid [process_rows process_columns [cudecomp_backend]]'
+        write(*,*) '   or: afid cudecomp_backend (autotune process grid)'
+        stop 1
+      end select
 
-      call decomp_2d_init(nxm,nym,nzm,prow,pcol, &
-     & (/ .false.,.true.,.true. /))
+      if (command_argument_count().eq.3) call get_command_argument(3,comm_backend)
+      if (command_argument_count().eq.1 .or. command_argument_count().eq.3) then
+        call decomp_2d_init(nxm,nym,nzm,prow,pcol, &
+     &   (/ .false.,.true.,.true. /), comm_backend)
+      else
+        call decomp_2d_init(nxm,nym,nzm,prow,pcol, &
+     &   (/ .false.,.true.,.true. /))
+      endif
 
 !MF  Assign GPU to MPI task is done in decomp_2d_init 
 
@@ -131,8 +166,8 @@
       call MPI_ALLREDUCE(rFreeMem,maxFreeMem,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,ierr)
       call MPI_ALLREDUCE(rFreeMem,minFreeMem,1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,ierr)
       if(nrank==0) then
-        write(*,"(A20,F7.1,A3,F7.1,A3,F7.1,A8)") " GPU memory used: ",minUsedMem," - ",maxUsedMem," / ",rTotalMem," MBytes"
-        write(*,"(A20,F7.1,A3,F7.1,A3,F7.1,A8)") " GPU memory free: ",maxFreeMem," - ",minFreeMem," / ",rTotalMem," MBytes"
+        write(*,"(A20,F12.1,A3,F12.1,A3,F12.1,A8)") " GPU memory used: ",minUsedMem," - ",maxUsedMem," / ",rTotalMem," MBytes"
+        write(*,"(A20,F12.1,A3,F12.1,A3,F12.1,A8)") " GPU memory free: ",maxFreeMem," - ",minFreeMem," / ",rTotalMem," MBytes"
         print *," "
       endif
 #endif

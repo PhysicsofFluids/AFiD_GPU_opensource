@@ -70,7 +70,11 @@ subroutine update_halo_real_gpu(in, level)
 
     data_type = real_type
 
+#ifdef USE_CUDECOMP
+    call cu_update_halo(in, level)
+#else
 #include "halo_common_gpu.F90"
+#endif
 
     return
   end subroutine update_halo_real_gpu

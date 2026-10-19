@@ -248,6 +248,10 @@
     integer :: ierror,istat
     integer :: i,j,k, m,i1,i2, pos, iter, sorc, dest
 
+#ifdef USE_CUDECOMP
+    call cu_transpose_complex(src, dst, decomp, 3, 2)
+#else
+
 call nvtxStartRange("tranZY",4)
 
 #ifdef EPA2A
@@ -401,6 +405,7 @@ call nvtxEndRangeAsync
 
 call nvtxEndRange
     return
+#endif
   end subroutine transpose_z_to_y_complex_d
 #endif
 

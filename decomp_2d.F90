@@ -13,6 +13,12 @@
 
 module decomp_2d
   use nvtx
+#ifdef USE_CUDECOMP
+#if !defined(USE_CUDA) || defined(USE_HYBRID)
+#error "cuDecomp requires USE_CUDA and a full GPU decomposition (no USE_HYBRID)"
+#endif
+  use cudecomp
+#endif
 #ifdef USE_CUDA
   use cudafor
   use mpiDeviceUtil 
@@ -90,6 +96,10 @@ module decomp_2d
 
   ! derived type to store decomposition info for a given global data size
   TYPE, public :: DECOMP_INFO
+#ifdef USE_CUDECOMP
+     type(cudecompGridDesc) :: cu_grid, cu_grid_xzy
+     complex(mytype), device, pointer, contiguous :: cu_work(:) => null(), cu_work_xzy(:) => null()
+#endif
      ! staring/ending index and size of data held by current processor
      integer, dimension(3) :: xst, xen, xsz  ! x-pencil
      integer, dimension(3) :: yst, yen, ysz  ! y-pencil
@@ -147,6 +157,14 @@ module decomp_2d
   END TYPE DECOMP_INFO
 
   ! main (default) decomposition information for global size nx*ny*nz
+#ifdef USE_CUDECOMP
+  type(cudecompHandle), save :: cu_handle
+  type(cudecompGridDesc), save :: cu_halo_grid
+  real(mytype), device, pointer, contiguous, save :: cu_halo_work(:) => null()
+  integer, save :: cu_halo_dims(3) = 0, cu_halo_level = -1
+  integer, save :: cu_transpose_backend = CUDECOMP_TRANSPOSE_COMM_MPI_P2P
+  integer, save :: cu_halo_backend = CUDECOMP_HALO_COMM_MPI
+#endif
   TYPE(DECOMP_INFO), save :: decomp_main
   TYPE(DECOMP_INFO), save :: decomp_ph,decomp_sp
 
@@ -315,7 +333,7 @@ contains
   !     all internal data structures initialised properly
   !     library ready to use
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  subroutine decomp_2d_init(nx,ny,nz,p_row,p_col,periodic_bc)
+  subroutine decomp_2d_init(nx,ny,nz,p_row,p_col,periodic_bc,comm_backend)
 #ifdef USE_HYBRID
     use param, only: gc_split_ratio
 #endif
@@ -324,6 +342,7 @@ contains
 
     integer, intent(IN) :: nx,ny,nz,p_row,p_col
     logical, dimension(3), intent(IN), optional :: periodic_bc
+    character(len=*), intent(IN), optional :: comm_backend
     
     integer :: errorcode, ierror, row, col, deviceID, maxrc, m, istat
     
@@ -349,12 +368,21 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD,nrank,ierror)
     call MPI_COMM_SIZE(MPI_COMM_WORLD,nproc,ierror)
 
+#ifdef USE_CUDECOMP
+    call cu_select_backend(comm_backend)
+#else
+    if (present(comm_backend)) call decomp_2d_abort(6, 'Backend selection requires USE_CUDECOMP')
+#endif
+
 #ifdef USE_CUDA
      first_time_alloc_work_r = 1
      first_time_alloc_work_c = 1
      alloc_work_r = 1
      alloc_work_c = 1
      call assignDevice(deviceID)
+#ifdef USE_CUDECOMP
+     call cu_check(cudecompInit(cu_handle, MPI_COMM_WORLD), 'initialize')
+#endif
 !     print *,"Rank: :",nrank," Assigning GPU :",deviceID
 
     !maxrc = row
@@ -542,6 +570,10 @@ contains
     decomp_buf_size = 0
     deallocate(work1_r, work2_r, work1_c, work2_c)
 
+#ifdef USE_CUDECOMP
+    call cu_halo_finalize()
+    call cu_check(cudecompFinalize(cu_handle), 'finalize')
+#endif
     call MPI_Finalize(ierr)
     
     return
@@ -663,6 +695,9 @@ contains
     allocate(decomp%zdispls_xz(nproc))
 #endif
     call prepare_buffer(decomp)
+#ifdef USE_CUDECOMP
+    call cu_decomp_init(nx, ny, nz, decomp)
+#endif
 
     ! allocate memory for the MPI_ALLTOALL(V) buffers
     ! define the buffers globally for performance reason
@@ -761,6 +796,12 @@ contains
     integer :: ierror
     TYPE(DECOMP_INFO), intent(INOUT) :: decomp
 
+#ifdef USE_CUDECOMP
+    call cu_check(cudecompFree(cu_handle, decomp%cu_grid, decomp%cu_work), 'free transpose workspace')
+    call cu_check(cudecompFree(cu_handle, decomp%cu_grid_xzy, decomp%cu_work_xzy), 'free xzy workspace')
+    call cu_check(cudecompGridDescDestroy(cu_handle, decomp%cu_grid), 'destroy grid')
+    call cu_check(cudecompGridDescDestroy(cu_handle, decomp%cu_grid_xzy), 'destroy xzy grid')
+#endif
     deallocate(decomp%x1dist,decomp%y1dist,decomp%y2dist,decomp%z2dist)
     deallocate(decomp%z1dist,decomp%x2dist)
     deallocate(decomp%x1st,decomp%y1st,decomp%y2st,decomp%z2st)
@@ -871,6 +912,17 @@ contains
     integer data1,proc,st(0:proc-1),en(0:proc-1),sz(0:proc-1)
     integer i,size1,nl,nu
   
+#ifdef USE_CUDECOMP
+    ! cuDecomp assigns remainder cells to the first ranks. Use that same
+    ! partition for solver arrays, CPU I/O and every communication count.
+    do i=0,proc-1
+      sz(i) = data1/proc
+      if (i < mod(data1,proc)) sz(i) = sz(i)+1
+      st(i) = 1 + i*(data1/proc) + min(i,mod(data1,proc))
+      en(i) = st(i)+sz(i)-1
+    end do
+    return
+#endif
     size1=data1/proc
     nu = data1 - size1 * proc
     nl = proc - nu
@@ -1173,6 +1225,9 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Transposition routines 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#ifdef USE_CUDECOMP
+#include "cudecomp_backend.F90"
+#endif
 #define EPA2A
 #include "transpose_x_to_y.F90"
 #include "transpose_y_to_z.F90"
